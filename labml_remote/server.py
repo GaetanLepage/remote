@@ -25,8 +25,8 @@ class Server:
         self.project_name = conf.name
         self.scripts_folder = conf.template_scripts_folder
         self.conf = conf.servers[server_id]
-        self.__client: SSHClient = None
-        self.__home_path: Optional[str] = None
+        self.__client: SSHClient
+        self.__home_path: str
         self.__remote_executor: Optional[RemoteExecutor] = None
         self.__local_executor: Optional[LocalExecutor] = None
 
