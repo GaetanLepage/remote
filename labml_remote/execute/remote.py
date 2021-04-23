@@ -10,17 +10,20 @@ from labml_remote.execute import UIMode
 
 
 class ExecutorThread(threading.Thread):
-    def __init__(self, client: SSHClient, command: str, *,
+    def __init__(self,
+                 client: SSHClient,
+                 command: str,
+                 *,
                  log_dir: Path,
                  ui_mode: UIMode = UIMode.dots):
         super().__init__(daemon=False)
         self.ui_mode = ui_mode
-        self.stdout_path = log_dir / 'stdout.log'
-        self.stderr_path = log_dir / 'stderr.log'
-        self.exit_code_path = log_dir / 'exit_code'
-        self.command = command
-        self.client = client
-        self.exit_code = 0
+        self.stdout_path: Path = log_dir / 'stdout.log'
+        self.stderr_path: Path = log_dir / 'stderr.log'
+        self.exit_code_path: Path = log_dir / 'exit_code'
+        self.command: str = command
+        self.client: SSHClient = client
+        self.exit_code: int = 0
         self.channel = None
 
     def _read_stdout(self):
@@ -74,7 +77,12 @@ class RemoteExecutor:
     def __init__(self, client: SSHClient):
         self.client = client
 
-    def eval(self, command: str, *, log_dir: Optional[Path], is_silent=True) -> EvalResult:
+    def eval(self,
+             command: str,
+             *,
+             log_dir: Optional[Path],
+             is_silent=True) -> EvalResult:
+
         with monit.section(f'Exec: {command}', is_silent=is_silent):
             stdin, stdout, stderr = self.client.exec_command(command)
             out = stdout.read()
@@ -91,19 +99,35 @@ class RemoteExecutor:
             if exit_code != 0:
                 monit.fail()
 
-            return EvalResult(exit_code, out.decode('utf-8').strip(), err.decode('utf-8').strip())
+            return EvalResult(exit_code,
+                              out.decode('utf-8').strip(),
+                              err.decode('utf-8').strip())
 
-    def background(self, command: str, *, log_dir: Path, ui_mode: UIMode = UIMode.dots):
-        thread = ExecutorThread(self.client, command,
-                                log_dir=log_dir, ui_mode=ui_mode)
+    def background(self,
+                   command: str,
+                   *,
+                   log_dir: Path,
+                   ui_mode: UIMode = UIMode.dots):
+        thread = ExecutorThread(client=self.client,
+                                command=command,
+                                log_dir=log_dir,
+                                ui_mode=ui_mode)
         thread.start()
 
         return EvalResult(0, '', '')
 
-    def stream(self, command: str, *, log_dir: Path, ui_mode: UIMode = UIMode.dots, is_silent=True):
+    def stream(self,
+               command: str,
+               *,
+               log_dir: Path,
+               ui_mode: UIMode = UIMode.dots,
+               is_silent=True):
+
         with monit.section(f'Exec: {command}', is_silent=is_silent):
-            thread = ExecutorThread(self.client, command,
-                                    log_dir=log_dir, ui_mode=ui_mode)
+            thread = ExecutorThread(client=self.client,
+                                    command=command,
+                                    log_dir=log_dir,
+                                    ui_mode=ui_mode)
             thread.start()
             thread.join()
             if thread.exit_code != 0:

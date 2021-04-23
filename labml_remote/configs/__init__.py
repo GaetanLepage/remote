@@ -21,7 +21,9 @@ class ServerConfig:
     private_key: Optional[paramiko.RSAKey]
     properties: Dict[str, any]
 
-    def __init__(self, name: str, configs: Dict[str, any]):
+    def __init__(self,
+                 name: str,
+                 configs: Dict[str, any]):
         self.name = name
         self.hostname = configs.pop('hostname')
         self.username = configs.pop('username', 'ubuntu')
@@ -48,7 +50,9 @@ class Configs:
     remote_jobs_folder_name: str
 
     def __init__(self, configs: Dict[str, any]):
-        self.servers = {str(k): ServerConfig(k, s) for k, s in configs.get('servers', {}).items()}
+        self.servers = {str(k): ServerConfig(k, s)
+                        for k, s
+                        in configs.get('servers', {}).items()}
         self.name = configs.get('name', Path('..').parent.absolute().name)
         self.project_scripts_folder = Path('.') / configs.get('scripts_folder', '.remote/scripts')
         self.project_logs_folder = Path('.') / configs.get('logs_folder', '.remote/logs')

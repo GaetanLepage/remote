@@ -13,12 +13,18 @@ from labml_remote.server import Server, SERVERS
 
 
 class Job:
-    def __init__(self, *, job_id: str, job_key: str, server: Server, command: str, env_vars: Dict[str, str],
+    def __init__(self,
+                 *,
+                 job_id: str,
+                 job_key: str,
+                 server: Server,
+                 command: str,
+                 env_vars: Dict[str, str],
                  tags: List[str],
                  pid: Optional[int] = None,
                  exit_code: Optional[int] = None,
                  started: bool = False,
-                 stopped: bool = False, ):
+                 stopped: bool = False) -> None:
         self.tags = set(tags)
         self.job_key = job_key
         self.env_vars = env_vars
@@ -76,44 +82,54 @@ class Job:
 
     def start(self):
         from labml_remote.util import get_env_vars
-        res = self.server.script('job.sh', {
-            'run_command': self.command,
-            'job_id': self.job_id,
-            'environment_variables': get_env_vars(self.env_vars)
-        }, ui_mode=UIMode.none, is_background=False, is_eval=True)
+        res = self.server.script(script_name='job.sh',
+                                 replace={'run_command': self.command,
+                                          'job_id': self.job_id,
+                                          'environment_variables': get_env_vars(self.env_vars)},
+                                 ui_mode=UIMode.none,
+                                 is_background=False,
+                                 is_eval=True)
         self.pid = int(res.out)
         self.exit_code = int(res.exit_code)
         self.started = True
         logger.log('Started job: ', (self.job_id, Text.value))
         logger.log('pid: ',
-                   (str(self.pid), Text.meta), ' exit code: ',
+                   (str(self.pid), Text.meta),
+                   ' exit code: ',
                    (str(self.exit_code), Text.meta))
         self.save()
 
-    def _tail_file(self, path: Path, tail_offset: int, file):
-        with open(str(path), 'rb') as f:
-            end = f.seek(0, io.SEEK_END)
+    def _tail_file(self,
+                   path: Path,
+                   tail_offset: int,
+                   file):
+        with open(str(path), 'rb') as file_stream:
+            end = file_stream.seek(0, io.SEEK_END)
             if tail_offset == -1:
                 tail_offset = max(0, end - 400)
-            f.seek(tail_offset)
-            c = f.read()
+            file_stream.seek(tail_offset)
+            c = file_stream.read()
             print(c.decode('utf-8'), end='', file=file)
 
         return end
 
     def tail(self):
         try:
-            self.out_tail_offset = self._tail_file(self.path / 'job.out', self.out_tail_offset, sys.stdout)
+            self.out_tail_offset = self._tail_file(self.path / 'job.out',
+                                                   self.out_tail_offset,
+                                                   sys.stdout)
         except FileNotFoundError:
             pass
         try:
-            self.err_tail_offset = self._tail_file(self.path / 'job.err', self.err_tail_offset, sys.stderr)
+            self.err_tail_offset = self._tail_file(self.path / 'job.err',
+                                                   self.err_tail_offset,
+                                                   sys.stderr)
         except FileNotFoundError:
             pass
 
     def has_tags(self, tags: List[str]):
-        for t in tags:
-            if t not in self.tags:
+        for tag in tags:
+            if tag not in self.tags:
                 return False
 
         return True
@@ -150,13 +166,16 @@ class JobCollection:
 
         return [j for j in jobs if j.has_tags(tags)]
 
-    def filter_out_by_tags(self, tags: List[str], jobs: Optional[Iterable[Job]] = None) -> List[Job]:
+    def filter_out_by_tags(self,
+                           tags: List[str],
+                           jobs: Optional[Iterable[Job]] = None) -> List[Job]:
         if jobs is None:
             jobs = self.all()
 
         return [j for j in jobs if not j.has_tags(tags)]
 
-    def filter_running(self, jobs: Optional[Iterable[Job]] = None) -> List[Job]:
+    def filter_running(self,
+                       jobs: Optional[Iterable[Job]] = None) -> List[Job]:
         if jobs is None:
             jobs = self.all()
 
@@ -174,10 +193,18 @@ class JobCollection:
             return '1'
         return str(max(keys) + 1)
 
-    def create(self, server_id: str, command: str, env_vars: Dict[str, str], tags: List[str]):
+    def create(self,
+               server_id: str,
+               command: str,
+               env_vars: Dict[str, str],
+               tags: List[str]):
         from uuid import uuid1
-        job = Job(job_id=uuid1().hex, job_key=self._next_key(), server=SERVERS[server_id],
-                  command=command, env_vars=env_vars, tags=tags)
+        job = Job(job_id=uuid1().hex,
+                  job_key=self._next_key(),
+                  server=SERVERS[server_id],
+                  command=command,
+                  env_vars=env_vars,
+                  tags=tags)
         self._jobs[job.job_id] = job
         self._keys[job.job_key] = job
         return job
@@ -208,10 +235,12 @@ class JobCollection:
         for k in SERVERS:
             if k in watching:
                 continue
-            s = SERVERS[k]
+            server = SERVERS[k]
 
-            s.copy_script(s.template_script('watch.py', {}), 'watch.py')
-            self.create(k, f'python {s.remote_scripts_path}/watch.py', {},
+            server.copy_script(script=server.template_script(script_name='watch.py',
+                                                             replace={}),
+                               script_name='watch.py')
+            self.create(k, f'python {server.remote_scripts_path}/watch.py', {},
                         ['__hidden__', '__watch__']).start()
 
 

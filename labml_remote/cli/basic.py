@@ -9,7 +9,8 @@ import labml_remote.configs.defaults
 from . import util
 from ..job import JOBS
 
-_SHOW_OUTPUT_ATTRS = dict(is_flag=True, help='Show full output of the command.')
+_SHOW_OUTPUT_ATTRS = dict(is_flag=True,
+                          help='Show full output of the command.')
 
 
 @click.command()
